@@ -7,5 +7,8 @@ LD_PRELOAD="/mnt/c/Users/Daniil/iCloudDrive/ИТМО/3 kursen/The newest distrib
 
 чтобы скомплиить: clang -std=c99 -Wall -pedantic *.c -Llib64 -lruntime
 потом вот это пишем где путь к ПАПКЕ с либой
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH\"/mnt/c/Users/Daniil/iCloudDrive/ИТМО/3 kursen/The newest distributed/pa2_DC/pa2_DC/lib64\""
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:\"/mnt/c/Users/Daniil/iCloudDrive/ИТМО/3 kursen/The newest distributed/pa2_DC/pa2_DC/lib64\""
 потом запускаем
+
+export LIBRARY_PATH="$LIBRARY_PATH:\"/Users/salix/Desktop/ITMO/PA2/pa2_DC/lib64\""
+clang -std=c99 -Wall -pedantic *.c -Llib64 -lruntime -lstdc
