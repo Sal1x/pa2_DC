@@ -1,4 +1,7 @@
 #include "banking.h"
+#include "utils.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 void transfer(void * parent_data, local_id src, local_id dst,
               balance_t amount)
@@ -8,11 +11,6 @@ void transfer(void * parent_data, local_id src, local_id dst,
 
 int main(int argc, char * argv[])
 {
-    size_t num_children;
-    size_t num_processes;
-    balance_t initial_balances[MAX_PROCESS];
-
-
     if (argc >= 3 && strcmp(argv[1], "-p") == 0) {
         num_children = strtol(argv[2], NULL, 10);
         num_processes = num_children + 1;
