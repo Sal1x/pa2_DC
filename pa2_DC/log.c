@@ -53,3 +53,11 @@ void log_received_all_done(Process *self) {
 void log_close(Process *self) {
     fclose(events_log_file);
 }
+
+void log_transfer_out(TransferOrder *transfer) {
+    logprintf(log_transfer_out_fmt, get_physical_time(), transfer->s_src, transfer->s_amount, transfer->s_dst);
+}
+
+void log_transfer_in(TransferOrder *transfer) {
+    logprintf(log_transfer_in_fmt, get_physical_time(), transfer->s_dst, transfer->s_amount, transfer->s_src);
+}

@@ -28,4 +28,8 @@ void log_received_all_done();
 
 void log_close();
 
+void log_transfer_out(TransferOrder *transfer);
+
+void log_transfer_in(TransferOrder *transfer);
+
 #endif 
