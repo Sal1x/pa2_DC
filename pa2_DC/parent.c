@@ -5,9 +5,9 @@ void run_parent_routine(Process* self){
     Message msg;
 
     //Start
-    log_started(self);
+    // log_started(self);
     receive_from_all_children(self, &msg);
-    log_received_all_started();
+    // log_received_all_started();
 
     //Bank Robbery
     transfer(self, 1, 2, 10);

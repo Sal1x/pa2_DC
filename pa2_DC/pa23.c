@@ -27,7 +27,7 @@ void transfer(void * parent_data, local_id src, local_id dst,
         .s_amount = amount,
     };
     memcpy(&msg.s_payload, &transferOrder, sizeof(TransferOrder));
-    send(self, dst, &msg);
+    send(self, src, &msg);
     Message receivedMsg;
     // wait ACK from 
     receive(self, dst, &receivedMsg);
@@ -102,7 +102,6 @@ int main(int argc, char * argv[])
             return 1;
         }
     }
-    log_started(self);
     if (self->id == PARENT_ID){
         run_parent_routine(self);
     } else
