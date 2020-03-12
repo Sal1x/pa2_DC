@@ -109,10 +109,13 @@ int send_history(Process* self) {
         printf("last time: %d, current time: %d\n", last_time_in_history, current_time);
         for (timestamp_t time = self->history.s_history_len; time < current_time; time++) {
             self->history.s_history[time].s_balance = last_balance;
-            printf("Changing history for time: %d to balance %d\n", time, last_balance);
+            self->history.s_history[time].s_time = time;
+            self->history.s_history[time].s_balance_pending_in = 0;
+            printf("SENDING: Changing history for time: %d to balance %d\n", time, last_balance);
         }
     }
-    self->history.s_history_len = current_time; //or +1???
+    self->history.s_history_len = current_time + 1; //or +1???
+    printf("CurrTime : %d \n", current_time);
     printf("*********PROCESS %d BALANCE HISTORY *************\n", self->id);
     for (int i = 0; i < self->history.s_history_len; i++){
         printf("PROCESS: %d | TIME: %d | BALANCE: %d\n", self->id, i, self->history.s_history[i]);

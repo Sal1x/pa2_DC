@@ -26,8 +26,10 @@ void run_child_routine(Process* self) {
 int initialize_balance_history(Process* self) {
     self->history.s_id = self->id;
     self->history.s_history[0].s_balance = initial_balances[self->id];
+    self->history.s_history[0].s_time = 0;
+    self->history.s_history[0].s_balance_pending_in = 0;
     self->history.s_history_len = 1;
-    printf("Process %d balance history initialized with %d\n", self->id, initial_balances[self->id]);
+    printf("Process %d balance history initialized with %d\n\n", self->id, initial_balances[self->id]);
 }
 int run_bank_routine(Process* self) {
     Message msg;
@@ -81,13 +83,13 @@ int handle_transfer(Process* self, Message* msg) {
     balance_t balance_change;
 
     if (transfer->s_src == self->id){
-        printf("Process %d handles outcoming transfer to %d\n", self->id, transfer->s_dst);
+        printf("Process %d handles outcoming transfer to %d at time %d\n", self->id, transfer->s_dst, current_time);
         balance_change = -(transfer->s_amount);
         log_transfer_out(transfer);
         send(self, transfer->s_dst, msg);
     }
     else {
-        printf("Process %d handles incoming transfer from %d\n", self->id, transfer->s_src);
+        printf("Process %d handles incoming transfer from %d at time %d\n", self->id, transfer->s_src, current_time);
         balance_change = transfer->s_amount;
 
         Message ack = {
@@ -103,6 +105,7 @@ int handle_transfer(Process* self, Message* msg) {
         // printf("--------Sending ack\n");
         send(&myself, PARENT_ID, &ack);
     }
+    
     // Fill gaps in history
     if (current_time > self->history.s_history_len) {
         int last_time_in_history = self->history.s_history_len-1;
@@ -110,14 +113,20 @@ int handle_transfer(Process* self, Message* msg) {
         printf("last time: %d, current time: %d\n", last_time_in_history, current_time);
         for (timestamp_t time = self->history.s_history_len; time < current_time; time++) {
             self->history.s_history[time].s_balance = last_balance;
+            self->history.s_history[time].s_time = time;
+            self->history.s_history[time].s_balance_pending_in = 0;
             printf("Changing history for time: %d to balance %d\n", time, last_balance);
         }
 
         // Set new balance
         balance_t new_balance = last_balance + balance_change;
         self->history.s_history[current_time].s_balance = new_balance;
-        self->history.s_history_len = current_time; //or +1???
-        printf("New balance is %d, new history len is %d\n", new_balance, self->history.s_history_len);
+        // \/\/\/\/ mb not need 
+        self->history.s_history[current_time].s_time = current_time;
+        self->history.s_history[current_time].s_balance_pending_in = 0;
+        // ^^^^
+        self->history.s_history_len = current_time + 1; //or +1???
+        printf("New balance is %d, new history len is %d at time %d\n", new_balance, self->history.s_history_len, current_time);
     }
     return 0;
 }
