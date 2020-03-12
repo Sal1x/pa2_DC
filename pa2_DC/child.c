@@ -30,7 +30,9 @@ int initialize_balance_history(Process* self) {
     self->history.s_history[0].s_balance_pending_in = 0;
     self->history.s_history_len = 1;
     printf("Process %d balance history initialized with %d\n\n", self->id, initial_balances[self->id]);
+    return 0;
 }
+
 int run_bank_routine(Process* self) {
     Message msg;
     bool stop_requested = false;
@@ -76,9 +78,10 @@ int run_bank_routine(Process* self) {
     }
     return 0;
 }
+
 //TODO ADD LOGS!!!!!!!!!!!!!!!!!!!!!!!
 int handle_transfer(Process* self, Message* msg) {
-    TransferOrder* transfer = msg->s_payload;
+    TransferOrder *transfer = (TransferOrder* ) msg->s_payload;
     timestamp_t current_time = get_physical_time();
     balance_t balance_change;
 
@@ -107,7 +110,23 @@ int handle_transfer(Process* self, Message* msg) {
     }
     
     // Fill gaps in history
+    fill_gaps(self, current_time);
+    balance_t last_balance = self->history.s_history[self->history.s_history_len - 1].s_balance;
+    printf(" -- Last Balance = %d\n", last_balance);
+
+    // Set new balance
+    balance_t new_balance = last_balance + balance_change;
+    self->history.s_history[current_time].s_balance = new_balance;
+    self->history.s_history[current_time].s_time = current_time;
+    self->history.s_history[current_time].s_balance_pending_in = 0;
+    self->history.s_history_len = (int) current_time + 1; //or +1???
+    printf(" -- New balance = %d\n -- New history len = %d\n -- Time = %d\n\n", new_balance, self->history.s_history_len, current_time);
+    return 0;
+    }
+
+void fill_gaps(Process* self, timestamp_t current_time){
     if (current_time > self->history.s_history_len) {
+        printf("-----Filling gaps for process %d------\n", self->id);
         int last_time_in_history = self->history.s_history_len-1;
         balance_t last_balance = self->history.s_history[last_time_in_history].s_balance;
         printf("last time: %d, current time: %d\n", last_time_in_history, current_time);
@@ -116,23 +135,6 @@ int handle_transfer(Process* self, Message* msg) {
             self->history.s_history[time].s_time = time;
             self->history.s_history[time].s_balance_pending_in = 0;
             printf("Changing history for time: %d to balance %d\n", time, last_balance);
-        }
-
-        // Set new balance
-        balance_t new_balance = last_balance + balance_change;
-        self->history.s_history[current_time].s_balance = new_balance;
-        // \/\/\/\/ mb not need 
-        self->history.s_history[current_time].s_time = current_time;
-        self->history.s_history[current_time].s_balance_pending_in = 0;
-        // ^^^^
-        self->history.s_history_len = current_time + 1; //or +1???
-        printf("New balance is %d, new history len is %d at time %d\n", new_balance, self->history.s_history_len, current_time);
+        } 
     }
-    return 0;
 }
-
-//Человек в другой лабе зачем то заполняет все время от момента трансфера до макс Т балансом, я не понимаю зачем это делать
-// initialize_balance_history(Process* self) {
-//     for (int i = 0; i < MAX_T;  i++)
-//         self->history[i] = 
-// }

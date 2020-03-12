@@ -1,8 +1,11 @@
 #include "banking.h"
 #include "utils.h"
 #include "log.h"
+#include "parent.h"
+#include "child.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -18,7 +21,7 @@ void transfer(void * parent_data, local_id src, local_id dst,
                 .s_magic = MESSAGE_MAGIC,
                 .s_payload_len = sizeof(TransferOrder),
                 .s_type = TRANSFER,
-                .s_local_time = get_physical_time
+                .s_local_time = (int) get_physical_time
             },
     };
     TransferOrder transferOrder = {

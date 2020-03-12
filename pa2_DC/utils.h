@@ -35,5 +35,6 @@ int send_started_to_all(Process* self);
 int send_done_to_all(Process* self);
 int send_stop_to_all(Process* self);
 int send_history(Process* self);
+void fill_gaps(Process* self, timestamp_t current_time);
 #endif
 
