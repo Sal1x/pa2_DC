@@ -8,14 +8,19 @@ void run_child_routine(Process* self) {
     initialize_balance_history(self);
 
     // log_started(self);
-    send_started_to_all(self);
-    receive_from_all_children(self, &msg);
+    // send_started_to_all(self);
+    // receive_from_all_children(self, &msg);
     // log_received_all_started();
+    receive(self, 0, &msg);
+    // printf("Recieved message with magic %d, time %d, length %d, type %d", msg.s_header.s_magic, msg.s_header.s_local_time, msg.s_header.s_payload_len, msg.s_header.s_type);
+    TransferOrder* transfer = &msg.s_payload;
+    // printf("Recieved transfer from %d to %d amount %d\n", transfer->s_src, transfer->s_dst, transfer->s_amount);
 
-    run_bank_routine(self);
 
-    receive_from_all_children(self, &msg);
-    log_received_all_done();
+    // run_bank_routine(self);
+
+    // receive_from_all_children(self, &msg);
+    // log_received_all_done();
     //send history
     //ADD LOGS Check if works add send history
 }
@@ -23,7 +28,7 @@ void run_child_routine(Process* self) {
 int initialize_balance_history(Process* self) {
     self->history.s_history[0].s_balance = initial_balances[self->id];
     self->history.s_history_len = 1;
-    printf("Process %d balance history initialized with %d\n", self->id, initial_balances[self->id]);
+    // printf("Process %d balance history initialized with %d\n", self->id, initial_balances[self->id]);
 }
 int run_bank_routine(Process* self) {
     Message msg;
@@ -80,7 +85,7 @@ int handle_transfer(Process* self, Message* msg) {
         printf("Process %d handles outcoming transfer to %d\n", self->id, transfer->s_dst);
         balance_change = -(transfer->s_amount);
         log_transfer_out(transfer);
-        printf("Sending transfer now to %d", transfer->s_dst);
+        printf("Sending transfer now to %d\n", transfer->s_dst);
         send(self, transfer->s_dst, msg);
     }
     else {

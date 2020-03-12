@@ -16,29 +16,43 @@
 
 int send(void * self, local_id dst, const Message * msg) {
     Process* current_process = self;
-    write(writer[current_process->id][dst], &msg->s_header, sizeof(MessageHeader));
-    write(writer[current_process->id][dst], &msg->s_payload, msg->s_header.s_payload_len);
-    printf("Sent to %d\n", dst);
-
+    TransferOrder* transfer = msg->s_payload;
+    printf("Sending transfer from %d to %d amount %d\n", transfer->s_src, transfer->s_dst, transfer->s_amount);
+    int bytes_written;
+    bytes_written = write(writer[current_process->id][dst], &msg->s_header, sizeof(MessageHeader));
+    printf("Bytes written first time is : %d\n", bytes_written);
+    bytes_written = write(writer[current_process->id][dst], &msg->s_payload, msg->s_header.s_payload_len);
+    printf("Bytes written second time is : %d\n", bytes_written);
 }
 
 int receive(void * self, local_id from, Message * msg) {
     Process* current_process = self;
     int bytes_read;
     while(true){
-    bytes_read = read(reader[from][current_process->id], &msg->s_header, sizeof(MessageHeader));\
+        bytes_read = read(reader[from][current_process->id], &msg->s_header, sizeof(MessageHeader));
         if (bytes_read == -1) {
             continue;
         }
-        read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
+        printf("Bytes read first time is : %d\n", bytes_read);
+        do
+        {
+            bytes_read  = read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
+            printf("Bytes read second time is : %d\n", bytes_read);
+        } while (bytes_read == -1);
+        
+        TransferOrder* transfer = msg->s_payload;
+        printf("Received transfer from %d to %d amount %d\n", transfer->s_src, transfer->s_dst, transfer->s_amount);
         return 0;
     }
 }
 
+// TEST WORKS
 int receive_from_all_children(Process* self, Message* msg){
     for (int i = 1; i <= num_children; i++) {
-        if (i != self->id)
+        if (i != self->id){
             receive(self, i, msg);
+            printf("%d Received start from to %d\n", self->id, i);
+        }
     }
     return 0;
 }
@@ -50,18 +64,21 @@ int send_multicast(void * self, const Message * msg) {
     //This is done to cast void pointer to Process. Because we cannot modify ipc.h
     Process* current_process = self;
     for (int i = 0; i < num_processes; i++) {
-        if (i != current_process->id)
+        if (i != current_process->id){
+            printf("Send start from %d to %d\n", current_process->id, i);
             send(current_process, i, msg);
+        }
     }
     return 0;
 }
 
+// TEST WORKS
 int send_started_to_all(Process* self) {
     Message msg = {
         .s_header =
             {
                 .s_magic = MESSAGE_MAGIC,
-                .s_type = DONE,
+                .s_type = STARTED,
             },
     };
     sprintf(msg.s_payload, log_started_fmt, get_physical_time(), self->id, getpid(), getppid);

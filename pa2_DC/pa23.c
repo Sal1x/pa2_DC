@@ -28,10 +28,12 @@ void transfer(void * parent_data, local_id src, local_id dst,
     };
     memcpy(&msg.s_payload, &transferOrder, sizeof(TransferOrder));
     send(self, src, &msg);
+    return;
     Message receivedMsg;
     // wait ACK from 
     receive(self, dst, &receivedMsg);
-    if (receivedMsg.s_header.s_type != ACK)
+    printf("I recieve ACK SIGNAL!!!!!!\n");
+    if (receivedMsg.s_header.s_type != ACK);
         fprintf(stderr, "ERROR: Wrong type of Message. Process %d received type %d from %d\n", self->id, receivedMsg.s_header.s_type, dst);
 }
 
@@ -78,8 +80,7 @@ int main(int argc, char * argv[])
             }
         }
     }
- // Добавить в открытие дискррипторов часть с ассинхрорнщиной 
- // Добавить один сенд и один рессив чтобы 
+    //TODO!!!! закрыть пайпы неиспользованные (если такие есть)
     log_init();
 
     process_pids[PARENT_ID] = getpid();
