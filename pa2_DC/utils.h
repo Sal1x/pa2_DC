@@ -34,5 +34,6 @@ int receive_from_all_children(Process* self, Message* msg);
 int send_started_to_all(Process* self);
 int send_done_to_all(Process* self);
 int send_stop_to_all(Process* self);
+int send_history(Process* self);
 #endif
 

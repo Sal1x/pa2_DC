@@ -14,7 +14,9 @@ void run_child_routine(Process* self) {
     // log_received_all_started();
 
     run_bank_routine(self);
-    printf("----------Recieved all done and stopped \n");
+    send_history(self);
+
+    // printf("----------Recieved all done and stopped \n");
 
     // log_received_all_done();
     //send history
@@ -22,6 +24,7 @@ void run_child_routine(Process* self) {
 }
 
 int initialize_balance_history(Process* self) {
+    self->history.s_id = self->id;
     self->history.s_history[0].s_balance = initial_balances[self->id];
     self->history.s_history_len = 1;
     printf("Process %d balance history initialized with %d\n", self->id, initial_balances[self->id]);

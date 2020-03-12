@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <string.h>
 #include "pa2345.h"
+#include "log.h"
+#include "banking.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -97,6 +99,38 @@ int send_stop_to_all(Process* self) {
             },
     };
     send_multicast(self, &msg);
+}
+
+int send_history(Process* self) {
+    timestamp_t current_time = get_physical_time();
+    if (current_time > self->history.s_history_len) {
+        int last_time_in_history = self->history.s_history_len-1;
+        balance_t last_balance = self->history.s_history[last_time_in_history].s_balance;
+        printf("last time: %d, current time: %d\n", last_time_in_history, current_time);
+        for (timestamp_t time = self->history.s_history_len; time < current_time; time++) {
+            self->history.s_history[time].s_balance = last_balance;
+            printf("Changing history for time: %d to balance %d\n", time, last_balance);
+        }
+    }
+    self->history.s_history_len = current_time; //or +1???
+    printf("*********PROCESS %d BALANCE HISTORY *************\n", self->id);
+    for (int i = 0; i < self->history.s_history_len; i++){
+        printf("PROCESS: %d | TIME: %d | BALANCE: %d\n", self->id, i, self->history.s_history[i]);
+    }
+
+    size_t size_of_history = sizeof(local_id) +
+                             sizeof(uint8_t) +
+                             self->history.s_history_len * sizeof(BalanceState);
+    Message msg = {
+        .s_header = {
+            .s_magic = MESSAGE_MAGIC,
+            .s_type = BALANCE_HISTORY,
+            .s_local_time = current_time,
+            .s_payload_len = size_of_history,
+        }
+    };
+    memcpy(&msg.s_payload, &self->history, size_of_history);
+    send(self, PARENT_ID, &msg);
 }
 
 int receive_any(void * self, Message * msg) {
