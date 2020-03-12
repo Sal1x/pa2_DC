@@ -33,6 +33,7 @@ void transfer(void * parent_data, local_id src, local_id dst,
     receive(self, dst, &receivedMsg);
     if (receivedMsg.s_header.s_type != ACK)
         fprintf(stderr, "ERROR: Wrong type of Message. Process %d received type %d from %d\n", self->id, receivedMsg.s_header.s_type, dst);
+    // printf("-------Ack received\n");
 }
 
 int main(int argc, char * argv[])

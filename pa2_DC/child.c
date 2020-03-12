@@ -2,6 +2,7 @@
 #include "log.h"
 #include "pa2345.h"
 #include "stdbool.h"
+#include "banking.h"
 
 void run_child_routine(Process* self) {
     Message msg;
@@ -13,9 +14,9 @@ void run_child_routine(Process* self) {
     // log_received_all_started();
 
     run_bank_routine(self);
+    printf("----------Recieved all done and stopped \n");
 
-    receive_from_all_children(self, &msg);
-    log_received_all_done();
+    // log_received_all_done();
     //send history
     //ADD LOGS Check if works add send history
 }
@@ -51,7 +52,7 @@ int run_bank_routine(Process* self) {
     }
     // STOP message received
     send_done_to_all(self);
-    while(num_other_processes_running !=0) {
+    while(num_other_processes_running > 0) {
         receive_any(self, &msg);
         printf("Process %d received a message in second cycle\n", self->id);
         switch (msg.s_header.s_type)
@@ -80,38 +81,40 @@ int handle_transfer(Process* self, Message* msg) {
         printf("Process %d handles outcoming transfer to %d\n", self->id, transfer->s_dst);
         balance_change = -(transfer->s_amount);
         log_transfer_out(transfer);
-        printf("Sending transfer now to %d", transfer->s_dst);
         send(self, transfer->s_dst, msg);
     }
     else {
         printf("Process %d handles incoming transfer from %d\n", self->id, transfer->s_src);
         balance_change = transfer->s_amount;
 
-        Message acknowledgement;
-        acknowledgement.s_header = (MessageHeader) {
-            .s_magic = MESSAGE_MAGIC,
-            .s_type = ACK,
-            .s_local_time = current_time,
-            .s_payload_len = 0,
+        Message ack = {
+            .s_header =
+                {
+                    .s_magic = MESSAGE_MAGIC,
+                    .s_type = ACK,
+                    .s_local_time = current_time,
+                    .s_payload_len = 0,
+                },
         };
         log_transfer_in(transfer);
-        send(&myself, PARENT_ID, &acknowledgement);
+        // printf("--------Sending ack\n");
+        send(&myself, PARENT_ID, &ack);
     }
     // Fill gaps in history
     if (current_time > self->history.s_history_len) {
         int last_time_in_history = self->history.s_history_len-1;
         balance_t last_balance = self->history.s_history[last_time_in_history].s_balance;
-        printf("last time: %d, current time: %d", last_time_in_history, current_time);
+        printf("last time: %d, current time: %d\n", last_time_in_history, current_time);
         for (timestamp_t time = self->history.s_history_len; time < current_time; time++) {
             self->history.s_history[time].s_balance = last_balance;
-            printf("Changing history for time: %d to balance %d", time, last_balance);
+            printf("Changing history for time: %d to balance %d\n", time, last_balance);
         }
 
         // Set new balance
         balance_t new_balance = last_balance + balance_change;
         self->history.s_history[current_time].s_balance = new_balance;
         self->history.s_history_len = current_time; //or +1???
-        printf("New balance is %d, new history len is %d", new_balance, self->history.s_history_len);
+        printf("New balance is %d, new history len is %d\n", new_balance, self->history.s_history_len);
     }
     return 0;
 }

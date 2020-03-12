@@ -18,8 +18,6 @@ int send(void * self, local_id dst, const Message * msg) {
     Process* current_process = self;
     write(writer[current_process->id][dst], &msg->s_header, sizeof(MessageHeader));
     write(writer[current_process->id][dst], &msg->s_payload, msg->s_header.s_payload_len);
-    printf("Sent to %d\n", dst);
-
 }
 
 int receive(void * self, local_id from, Message * msg) {
@@ -30,15 +28,21 @@ int receive(void * self, local_id from, Message * msg) {
         if (bytes_read == -1) {
             continue;
         }
-        read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
+            if (msg->s_header.s_payload_len > 0){
+                do {
+                    bytes_read = read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
+                } while (bytes_read == -1);
+            }
         return 0;
     }
 }
 
 int receive_from_all_children(Process* self, Message* msg){
     for (int i = 1; i <= num_children; i++) {
-        if (i != self->id)
+        if (i != self->id){
             receive(self, i, msg);
+            // printf("------Process %d received type %d\n", self->id, msg->s_header.s_type);
+        }
     }
     return 0;
 }
@@ -61,10 +65,11 @@ int send_started_to_all(Process* self) {
         .s_header =
             {
                 .s_magic = MESSAGE_MAGIC,
-                .s_type = DONE,
+                .s_type = STARTED,
             },
     };
-    sprintf(msg.s_payload, log_started_fmt, get_physical_time(), self->id, getpid(), getppid);
+    int payload_len = sprintf(msg.s_payload, log_started_fmt, get_physical_time(), self->id, getpid(), getppid);
+    msg.s_header.s_payload_len = payload_len;
     send_multicast(self, &msg);
 }
 
@@ -73,10 +78,24 @@ int send_done_to_all(Process* self) {
         .s_header =
             {
                 .s_magic = MESSAGE_MAGIC,
-                .s_type = STARTED,
+                .s_type = DONE,
             },
     };
-    sprintf(msg.s_payload, log_done_fmt, get_physical_time(), self->id, self->history.s_history->s_balance);
+    int payload_len = sprintf(msg.s_payload, log_done_fmt, get_physical_time(), self->id, self->history.s_history->s_balance);
+    msg.s_header.s_payload_len = payload_len;
+    send_multicast(self, &msg);
+}
+
+int send_stop_to_all(Process* self) {
+    Message msg = {
+        .s_header =
+            {
+                .s_magic = MESSAGE_MAGIC,
+                .s_type = STOP,
+                .s_payload_len = 0,
+                .s_local_time = get_physical_time(),
+            },
+    };
     send_multicast(self, &msg);
 }
 
@@ -91,7 +110,11 @@ int receive_any(void * self, Message * msg) {
             if (bytes_read == -1) {
                 continue;
             }
-            read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
+            if (msg->s_header.s_payload_len > 0){
+                do {
+                    bytes_read =read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
+                } while (bytes_read == -1);
+            }
             return 0;
         }
     }
