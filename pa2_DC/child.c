@@ -78,13 +78,17 @@ int run_bank_routine(Process* self) {
 //TODO ADD LOGS!!!!!!!!!!!!!!!!!!!!!!!
 int handle_transfer(Process* self, Message* msg) {
     TransferOrder *transfer = (TransferOrder* ) msg->s_payload;
-    timestamp_t current_time = get_physical_time();
+    timestamp_t transfer_time = msg->s_header.s_local_time;
     balance_t balance_change;
+
+    take_max_time_and_inc(self, transfer_time);
+    timestamp_t current_time = self->lamport_time;
 
     if (transfer->s_src == self->id){
         // printf("Process %d handles outcoming transfer to %d at time %d\n", self->id, transfer->s_dst, current_time);
         balance_change = -(transfer->s_amount);
-        log_transfer_out(transfer);
+        msg->s_header.s_local_time = current_time;
+        log_transfer_out(transfer, current_time);
         send(self, transfer->s_dst, msg);
     }
     else {
@@ -100,15 +104,17 @@ int handle_transfer(Process* self, Message* msg) {
                     .s_payload_len = 0,
                 },
         };
-        log_transfer_in(transfer);
+        log_transfer_in(transfer, current_time);
         // printf("--------Sending ack\n");
         send(&myself, PARENT_ID, &ack);
     }
     
     // Fill gaps in history
-    fill_gaps(self, current_time);
+    fill_gaps(self, self->lamport_time);
+    if (balance_change > 0)
+        fill_pending_in(self, transfer_time, current_time, balance_change);
+
     balance_t last_balance = self->history.s_history[self->history.s_history_len - 1].s_balance;
-    printf(" -- Last Balance = %d\n", last_balance);
 
     // Set new balance
     balance_t new_balance = last_balance + balance_change;
@@ -133,4 +139,14 @@ void fill_gaps(Process* self, timestamp_t current_time){
             // printf("Changing history for time: %d to balance %d\n", time, last_balance);
         } 
     }
+}
+
+void fill_pending_in(Process* self, timestamp_t transfer_time, timestamp_t current_time, balance_t income) {
+    // printf("--- Feeling pending current time %d, history len %d \n", current_time, self->history.s_history_len);
+    if (current_time > transfer_time) {
+        for (timestamp_t time = transfer_time; time < current_time; time++) {
+            self->history.s_history[time].s_balance_pending_in = income;
+        }
+    }
+
 }

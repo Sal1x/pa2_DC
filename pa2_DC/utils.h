@@ -23,7 +23,7 @@ balance_t initial_balances[MAX_PROCESSES];
 typedef struct {
     BalanceHistory history;
     local_id id;
-    AllHistory all_history;
+    timestamp_t lamport_time;
 } Process;
 
 // delete if not needed
@@ -37,5 +37,6 @@ int send_stop_to_all(Process* self);
 int send_history(Process* self);
 void fill_gaps(Process* self, timestamp_t current_time);
 void close_pipes_that_dont_belong_to_us(Process *self);
+void take_max_time_and_inc(Process *self, timestamp_t time);
 #endif
 

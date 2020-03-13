@@ -18,8 +18,7 @@
 
 int send(void * self, local_id dst, const Message * msg) {
     Process* current_process = self;
-    write(writer[current_process->id][dst], &msg->s_header, sizeof(MessageHeader));
-    write(writer[current_process->id][dst], &msg->s_payload, msg->s_header.s_payload_len);
+    write(writer[current_process->id][dst], msg, sizeof(MessageHeader) + msg->s_header.s_payload_len);
     return 0;
 }
 
@@ -28,13 +27,13 @@ int receive(void * self, local_id from, Message * msg) {
     int bytes_read;
     while(true){
     bytes_read = read(reader[from][current_process->id], &msg->s_header, sizeof(MessageHeader));\
-        if (bytes_read == -1) {
+        if (bytes_read <= 0) {
             continue;
         }
             if (msg->s_header.s_payload_len > 0){
                 do {
                     bytes_read = read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
-                } while (bytes_read == -1);
+                } while (bytes_read <= 0);
             }
         return 0;
     }
@@ -96,35 +95,12 @@ int send_stop_to_all(Process* self) {
                 .s_magic = MESSAGE_MAGIC,
                 .s_type = STOP,
                 .s_payload_len = 0,
-                .s_local_time = get_physical_time(),
             },
     };
     return send_multicast(self, &msg);
 }
 
 int send_history(Process* self) {
-    timestamp_t current_time = get_physical_time();
-    // printf("\n\n-------- LAST TIME --------\n-------- %d --------\n\n", current_time);
-    if (current_time >= self->history.s_history_len) {
-        // printf("-----Filling gaps for process %d------\n", self->id);
-        int last_time_in_history = self->history.s_history_len-1;
-        balance_t last_balance = self->history.s_history[last_time_in_history].s_balance;
-        // printf("last time: %d, current time: %d\n", last_time_in_history, current_time);
-        for (timestamp_t time = self->history.s_history_len; time <= current_time; time++) {
-            self->history.s_history[time].s_balance = last_balance;
-            self->history.s_history[time].s_time = time;
-            self->history.s_history[time].s_balance_pending_in = 0;
-            // printf("Changing history for time: %d to balance %d\n", time, last_balance);
-        }
-    } 
-    self->history.s_history[current_time].s_time = current_time;
-    self->history.s_history[current_time].s_balance_pending_in = 0;
-    self->history.s_history_len = current_time + 1;
-    // printf("CurrTime : %d \n", current_time);
-    // printf("*********PROCESS %d BALANCE HISTORY *************\n", self->id);
-    for (int i = 0; i < self->history.s_history_len; i++){
-        // printf("PROCESS: %d | TIME: %d | BALANCE: %d\n", self->id, i, self->history.s_history[i].s_balance);
-    }
 
     size_t size_of_history = sizeof(local_id) +
                              sizeof(uint8_t) +
@@ -133,7 +109,7 @@ int send_history(Process* self) {
         .s_header = {
             .s_magic = MESSAGE_MAGIC,
             .s_type = BALANCE_HISTORY,
-            .s_local_time = current_time,
+            .s_local_time = self->lamport_time,
             .s_payload_len = size_of_history,
         }
     };
@@ -149,13 +125,13 @@ int receive_any(void * self, Message * msg) {
             if (from == current_process->id)
                 continue;
             bytes_read = read(reader[from][current_process->id], &msg->s_header, sizeof(MessageHeader));
-            if (bytes_read == -1) {
+            if (bytes_read <= 0) {
                 continue;
             }
             if (msg->s_header.s_payload_len > 0){
                 do {
                     bytes_read =read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
-                } while (bytes_read == -1);
+                } while (bytes_read <= 0);
             }
             return 0;
         }

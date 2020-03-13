@@ -14,6 +14,7 @@
 void transfer(void * parent_data, local_id src, local_id dst,
               balance_t amount) {
     Process *self = parent_data;
+    self->lamport_time++;
 
     Message msg = {
         .s_header =
@@ -21,7 +22,7 @@ void transfer(void * parent_data, local_id src, local_id dst,
                 .s_magic = MESSAGE_MAGIC,
                 .s_payload_len = sizeof(TransferOrder),
                 .s_type = TRANSFER,
-                .s_local_time = (int) get_physical_time
+                .s_local_time = self->lamport_time,
             },
     };
     TransferOrder transferOrder = {
@@ -36,6 +37,8 @@ void transfer(void * parent_data, local_id src, local_id dst,
     receive(self, dst, &receivedMsg);
     if (receivedMsg.s_header.s_type != ACK)
         fprintf(stderr, "ERROR: Wrong type of Message. Process %d received type %d from %d\n", self->id, receivedMsg.s_header.s_type, dst);
+
+    take_max_time_and_inc(self, receivedMsg.s_header.s_local_time);
     // printf("-------Ack received\n");
 }
 
@@ -109,6 +112,7 @@ int main(int argc, char * argv[])
 
     close_pipes_that_dont_belong_to_us(self);
 
+    self->lamport_time = 0;
     if (self->id == PARENT_ID){
         run_parent_routine(self);
     } else

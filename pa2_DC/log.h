@@ -28,8 +28,8 @@ void log_received_all_done(Process* self);
 
 void log_close(Process* self);
 
-void log_transfer_out(TransferOrder *transfer);
+void log_transfer_out(TransferOrder *transfer, timestamp_t time);
 
-void log_transfer_in(TransferOrder *transfer);
+void log_transfer_in(TransferOrder *transfer, timestamp_t time);
 
 #endif 
