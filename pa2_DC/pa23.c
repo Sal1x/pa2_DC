@@ -106,6 +106,9 @@ int main(int argc, char * argv[])
             return 1;
         }
     }
+
+    close_pipes_that_dont_belong_to_us(self);
+
     if (self->id == PARENT_ID){
         run_parent_routine(self);
     } else
@@ -123,3 +126,22 @@ int main(int argc, char * argv[])
 
     return 0;
 }
+
+void close_pipes_that_dont_belong_to_us(Process *self) {
+    for (size_t source = 0; source < num_processes; source++) {
+        for (size_t destination = 0; destination < num_processes; destination++) {
+            if (source != self->id && destination != self->id &&
+                source != destination) {
+                close(writer[source][destination]);
+                close(reader[source][destination]);
+            }
+            if (source == self->id && destination != self->id) {
+                close(reader[source][destination]);
+            }
+            if (destination == self->id && source != self->id) {
+                close(writer[source][destination]);
+            }
+        }
+    }
+}
+
