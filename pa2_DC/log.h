@@ -20,13 +20,13 @@ void log_pipe_opened(int from, int to);
 
 void log_started(Process* self);
 
-void log_received_all_started();
+void log_received_all_started(Process* self);
 
-void log_done();
+void log_done(Process* self);
 
-void log_received_all_done();
+void log_received_all_done(Process* self);
 
-void log_close();
+void log_close(Process* self);
 
 void log_transfer_out(TransferOrder *transfer);
 

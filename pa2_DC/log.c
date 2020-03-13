@@ -33,8 +33,11 @@ void log_started(Process *self) {
     pid_t parent_pid = getppid();
 
     logprintf(
-        log_started_fmt, get_physical_time, self->id,
-        pid, parent_pid,
+        log_started_fmt,
+        get_physical_time,
+        self->id,
+        pid,
+        parent_pid,
         self->history.s_history[self->history.s_history_len - 1].s_balance);
 }
 
@@ -43,7 +46,7 @@ void log_received_all_started(Process *self) {
 }
 
 void log_done(Process *self) {
-    logprintf(log_done_fmt, get_physical_time(), self->id);
+    logprintf(log_done_fmt, get_physical_time(), self->id, self->history.s_history[self->history.s_history_len - 1].s_balance);
 }
 
 void log_received_all_done(Process *self) {
