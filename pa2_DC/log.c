@@ -34,7 +34,7 @@ void log_started(Process *self) {
 
     logprintf(
         log_started_fmt,
-        get_physical_time,
+        get_lamport_time(),
         self->id,
         pid,
         parent_pid,

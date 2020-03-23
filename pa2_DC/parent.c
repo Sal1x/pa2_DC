@@ -13,6 +13,7 @@ void run_parent_routine(Process* self){
     bank_robbery(self, num_children);
 
     //Send stop
+    self->lamport_time++;
     send_stop_to_all(self);
 
     //receive done
@@ -30,7 +31,9 @@ void receive_all_history(Process* self, AllHistory* all_history){
     timestamp_t max_time;
     all_history->s_history_len = num_children;
     for(size_t from = 1; from <= num_children ; ++from){
+        self->lamport_time++;
         receive(self, from, &msg);
+        take_max_time_and_inc(self, msg.s_header.s_local_time);
 
         if(msg.s_header.s_type != BALANCE_HISTORY)
             printf("ERROR: Wrong type in BALANCE_HISTORY");

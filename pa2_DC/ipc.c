@@ -42,7 +42,10 @@ int receive(void * self, local_id from, Message * msg) {
 int receive_from_all_children(Process* self, Message* msg){
     for (int i = 1; i <= num_children; i++) {
         if (i != self->id){
+            self->lamport_time++;
             receive(self, i, msg);
+            take_max_time_and_inc(self, msg->s_header.s_local_time);
+
             // printf("------Process %d received type %d\n", self->id, msg->s_header.s_type);
         }
     }
@@ -68,9 +71,10 @@ int send_started_to_all(Process* self) {
             {
                 .s_magic = MESSAGE_MAGIC,
                 .s_type = STARTED,
+                .s_local_time = self->lamport_time,
             },
     };
-    int payload_len = sprintf(msg.s_payload, log_started_fmt, get_physical_time(), self->id, getpid(), getppid(), self->history.s_history->s_balance);
+    int payload_len = sprintf(msg.s_payload, log_started_fmt, get_lamport_time(), self->id, getpid(), getppid(), self->history.s_history->s_balance);
     msg.s_header.s_payload_len = payload_len;
     return send_multicast(self, &msg);
 }
@@ -81,9 +85,10 @@ int send_done_to_all(Process* self) {
             {
                 .s_magic = MESSAGE_MAGIC,
                 .s_type = DONE,
+                .s_local_time = self->lamport_time,
             },
     };
-    int payload_len = sprintf(msg.s_payload, log_done_fmt, get_physical_time(), self->id, self->history.s_history->s_balance);
+    int payload_len = sprintf(msg.s_payload, log_done_fmt, get_lamport_time(), self->id, self->history.s_history->s_balance);
     msg.s_header.s_payload_len = payload_len;
     return send_multicast(self, &msg);
 }
@@ -95,6 +100,7 @@ int send_stop_to_all(Process* self) {
                 .s_magic = MESSAGE_MAGIC,
                 .s_type = STOP,
                 .s_payload_len = 0,
+                .s_local_time = self->lamport_time,
             },
     };
     return send_multicast(self, &msg);

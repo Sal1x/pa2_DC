@@ -34,6 +34,7 @@ void transfer(void * parent_data, local_id src, local_id dst,
     send(self, src, &msg);
     Message receivedMsg;
     // wait ACK from 
+    self->lamport_time++;
     receive(self, dst, &receivedMsg);
     if (receivedMsg.s_header.s_type != ACK)
         fprintf(stderr, "ERROR: Wrong type of Message. Process %d received type %d from %d\n", self->id, receivedMsg.s_header.s_type, dst);

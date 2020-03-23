@@ -9,12 +9,14 @@ void run_child_routine(Process* self) {
     initialize_balance_history(self);
 
     log_started(self);
+    self->lamport_time++;
     send_started_to_all(self);
     receive_from_all_children(self, &msg);
     log_received_all_started(self);
 
     run_bank_routine(self);
     log_received_all_done(self);
+    self->lamport_time++;
     send_history(self);
 }
 
@@ -33,7 +35,9 @@ int run_bank_routine(Process* self) {
     bool stop_requested = false;
     int num_other_processes_running = num_children-1;
     while(!stop_requested) {
+        self->lamport_time++;
         receive_any(self, &msg); // There is a cycle until message received
+        take_max_time_and_inc(self, msg.s_header.s_local_time);
         // printf("Process %d received a message\n", self->id);
         switch (msg.s_header.s_type)
         {
@@ -53,10 +57,13 @@ int run_bank_routine(Process* self) {
         }
     }
     // STOP message received
+    self->lamport_time++;
     log_done(self);
     send_done_to_all(self);
     while(num_other_processes_running > 0) {
+        self->lamport_time++;
         receive_any(self, &msg);
+        take_max_time_and_inc(self, msg.s_header.s_local_time);
         // printf("Process %d received a message in second cycle\n", self->id);
         switch (msg.s_header.s_type)
         {
@@ -81,30 +88,30 @@ int handle_transfer(Process* self, Message* msg) {
     timestamp_t transfer_time = msg->s_header.s_local_time;
     balance_t balance_change;
 
-    take_max_time_and_inc(self, transfer_time);
-    timestamp_t current_time = self->lamport_time;
 
     if (transfer->s_src == self->id){
         // printf("Process %d handles outcoming transfer to %d at time %d\n", self->id, transfer->s_dst, current_time);
         balance_change = -(transfer->s_amount);
-        msg->s_header.s_local_time = current_time;
-        log_transfer_out(transfer, current_time);
+        self->lamport_time++;
+        msg->s_header.s_local_time = self->lamport_time;
+        log_transfer_out(transfer, self->lamport_time);
         send(self, transfer->s_dst, msg);
     }
     else {
         // printf("Process %d handles incoming transfer from %d at time %d\n", self->id, transfer->s_src, current_time);
         balance_change = transfer->s_amount;
 
+        self->lamport_time++;
         Message ack = {
             .s_header =
                 {
                     .s_magic = MESSAGE_MAGIC,
                     .s_type = ACK,
-                    .s_local_time = current_time,
+                    .s_local_time = self->lamport_time,
                     .s_payload_len = 0,
                 },
         };
-        log_transfer_in(transfer, current_time);
+        log_transfer_in(transfer, self->lamport_time);
         // printf("--------Sending ack\n");
         send(&myself, PARENT_ID, &ack);
     }
@@ -112,16 +119,16 @@ int handle_transfer(Process* self, Message* msg) {
     // Fill gaps in history
     fill_gaps(self, self->lamport_time);
     if (balance_change > 0)
-        fill_pending_in(self, transfer_time, current_time, balance_change);
+        fill_pending_in(self, transfer_time, self->lamport_time, balance_change);
 
     balance_t last_balance = self->history.s_history[self->history.s_history_len - 1].s_balance;
 
     // Set new balance
     balance_t new_balance = last_balance + balance_change;
-    self->history.s_history[current_time].s_balance = new_balance;
-    self->history.s_history[current_time].s_time = current_time;
-    self->history.s_history[current_time].s_balance_pending_in = 0;
-    self->history.s_history_len = (int) current_time + 1; //or +1???
+    self->history.s_history[self->lamport_time].s_balance = new_balance;
+    self->history.s_history[self->lamport_time].s_time = self->lamport_time;
+    self->history.s_history[self->lamport_time].s_balance_pending_in = 0;
+    self->history.s_history_len = (int) self->lamport_time + 1; //or +1???
     // printf(" -- New balance = %d\n -- New history len = %d\n -- Time = %d\n\n", new_balance, self->history.s_history_len, current_time);
     return 0;
     }
