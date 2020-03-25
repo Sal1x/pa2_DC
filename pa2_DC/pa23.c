@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 void transfer(void * parent_data, local_id src, local_id dst,
               balance_t amount) {
@@ -46,29 +47,45 @@ void transfer(void * parent_data, local_id src, local_id dst,
 int main(int argc, char * argv[])
 {
     Process* self = &myself;
+    bool mutex_enabled = false;
     // READ COMMANDLINE
-    if (argc >= 3 && strcmp(argv[1], "-p") == 0) {
-        num_children = strtol(argv[2], NULL, 10);
-        num_processes = num_children + 1;
 
-        if (num_children >= MAX_PROCESSES) {
-            fprintf(stderr, "ERROR: Too many children requested.\n");
+    bool arg_p_met = false;
+
+    int argi = 1;
+    while (argi < argc) {
+        if (strcmp(argv[argi], "--mutexl") == 0) {
+            mutex_enabled = true;
+
+        } else if (strcmp(argv[argi], "-p") == 0) {
+            argi++;
+            if (argc <= argi) {
+                printf("Please provide number of children after `-p'\n");
+                return 1;
+            } else {
+                num_children = strtol(argv[argi], NULL, 10);
+                num_processes = num_children + 1;
+
+                if (num_children >= MAX_PROCESSES) {
+                    printf("Too many children requested.\n");
+                    return 1;
+                }
+
+                arg_p_met = true;
+            }
+
+        } else {
+            printf("Expected `-p NUM_CHILDREN' or `--mutexl', found `%s'\n", argv[argi]);
             return 1;
         }
+        argi++;
+    }
 
-        if (argc != 3 + num_children) {
-            fprintf(stderr, "ERROR: Expected %ld balances after `%s %s'\n",
-                    num_children, argv[1], argv[2]);
-            return 1;
-        }
-
-        for (size_t i = 1; i <= num_children; i++) {
-            initial_balances[i] = strtol(argv[2 + i], NULL, 10);
-        }
-    } else {
-        fprintf(stderr, "ERROR: Key '-p NUMBER_OF_CHILDREN' is mandatory\n");
+    if (!arg_p_met) {
+        printf("Option `-p NUM_CHILDREN' is not provided\n");
         return 1;
     }
+
     //------------ Create file descriptors. ------------
     for (size_t source = 0; source < num_processes; source++) {
         for (size_t destination = 0; destination < num_processes;
@@ -118,16 +135,13 @@ int main(int argc, char * argv[])
         run_parent_routine(self);
     } else
     {
-        run_child_routine(self);
+        run_child_routine(self, mutex_enabled);
     }
     
 
     for (size_t i = 1; i <= num_processes; i++) {
         waitpid(process_pids[i], NULL, 0);
     }
-
-    //bank_robbery(parent_data);
-    //print_history(all);
 
     return 0;
 }

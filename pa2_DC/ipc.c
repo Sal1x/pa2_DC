@@ -39,11 +39,16 @@ int receive(void * self, local_id from, Message * msg) {
     }
 }
 
-int receive_from_all_children(Process* self, Message* msg){
+int receive_from_all_children(Process* self, Message* msg, MessageType type){
     for (int i = 1; i <= num_children; i++) {
         if (i != self->id){
             self->lamport_time++;
             receive(self, i, msg);
+            if (msg->s_header.s_type != type){
+                i--;
+                continue;
+            }
+
             take_max_time_and_inc(self, msg->s_header.s_local_time);
 
             // printf("------Process %d received type %d\n", self->id, msg->s_header.s_type);
@@ -106,7 +111,7 @@ int send_stop_to_all(Process* self) {
     return send_multicast(self, &msg);
 }
 
-int send_request_to_all(Process* self) {
+void send_request_to_all(Process* self) {
     Message msg = {
         .s_header =
             {
@@ -116,10 +121,10 @@ int send_request_to_all(Process* self) {
                 .s_local_time = self->lamport_time,
             },
     };
-    return send_multicast(self, &msg);
+    send_multicast(self, &msg);
 }
 
-int send_cs_reply(Process* self, local_id to) {
+void send_cs_reply(Process* self, local_id to) {
     Message msg = {
         .s_header =
             {
@@ -133,7 +138,7 @@ int send_cs_reply(Process* self, local_id to) {
 
 }
 
-int send_cs_release_to_all(Process* self) {
+void send_cs_release_to_all(Process* self) {
     Message msg = {
         .s_header =
             {
@@ -143,7 +148,7 @@ int send_cs_release_to_all(Process* self) {
                 .s_payload_len = 0,
             },
     };
-    send_multicast(&myself, to, &msg);
+    send_multicast(&myself, &msg);
 }
 
 int send_history(Process* self) {

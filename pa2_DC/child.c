@@ -3,35 +3,68 @@
 #include "pa2345.h"
 #include "stdbool.h"
 #include "banking.h"
-#include "priority_queue.h"
+#include <stdio.h>
+#include <string.h>
 
-void run_child_routine(Process* self) {
+void run_child_routine(Process* self, bool mutex_enabled) {
     Message msg;
-    initialize_balance_history(self);
 
     log_started(self);
     self->lamport_time++;
     send_started_to_all(self);
-    receive_from_all_children(self, &msg);
+    receive_from_all_children(self, &msg, STARTED);
     log_received_all_started(self);
 
-    int num_other_processes_running = request_cs(self);
-    //print
-    release_cs(self);
+    int num_other_processes_running = num_children-1;
+    if (mutex_enabled){
+        num_other_processes_running = request_cs(self);
+    }
 
-    log_received_all_done(self);
+    int num_prints = self->id * 5;
+
+    char str[128];
+
+     for (int i = 1; i <= num_prints; ++i) {
+            memset(str, 0, sizeof(str));
+            sprintf(str, log_loop_operation_fmt, self->id, i, num_prints);
+            print(str);
+     }
+
+     if (mutex_enabled)
+        release_cs(self);
+
     self->lamport_time++;
-    send_history(self);
+    send_done_to_all(self);
+    wait_for_all_done(self, num_other_processes_running);
+    log_received_all_done(self);
+}
+
+void wait_for_all_done(Process* self, int done_remaining) {
+        while (done_remaining > 0) {
+            Message msg;
+            self->lamport_time++;
+            local_id from = receive_any(self, &msg);
+            take_max_time_and_inc(self, msg.s_header.s_local_time);
+            switch (msg.s_header.s_type) {
+                case DONE:
+                    done_remaining--;
+                    break;
+                case CS_REQUEST:
+                    self->lamport_time++;
+                    send_cs_reply(self, from);
+            break;
+                default:
+                    //we don't care about other messages anymore
+                    break;
+            }
+    }
 }
 
 int request_cs(const void * self) {
     Process* process = (Process*) self;
-    Message msg;
 
     process->lamport_time++;
-    pq_push(self, process->id, process->lamport_time);
-
-    process->lamport_time++;
+    pq_push(process, process->id, process->lamport_time);
     send_request_to_all(process);
 
     return wait_for_replies(process);
@@ -40,19 +73,21 @@ int request_cs(const void * self) {
 int release_cs(const void* self) {
     Process* process = (Process*) self;
 
-    pq_pop(self);
+    pq_pop(process);
     process->lamport_time++;
-    send_cs_release_to_all(self);
+    send_cs_release_to_all(process);
 
     return 0;
 }
 
 int wait_for_replies(Process* self) {
        Message msg;
-    bool stop_requested = false;
     int num_replies_left = num_children - 1;
     int num_other_processes_running = num_children-1;
-    while(num_replies_left > 0 && pq_peek(self).process_id != self->id) {
+    // debug
+    while(num_replies_left > 0 || pq_peek(self).process_id != self->id) {
+        for (int i = 0; i <= self->local_queue.size; i++) {
+        }
         self->lamport_time++;
         local_id from = receive_any(self, &msg); // There is a cycle until message received
         take_max_time_and_inc(self, msg.s_header.s_local_time);
@@ -69,7 +104,6 @@ int wait_for_replies(Process* self) {
             break;
         case CS_RELEASE:
             pq_pop(self);
-            num_replies_left--;
             break;
         case DONE:
             // printf("Its a DONE!\n");

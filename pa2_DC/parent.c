@@ -6,23 +6,12 @@ void run_parent_routine(Process* self){
 
     //Start
     log_started(self);
-    receive_from_all_children(self, &msg);
+    receive_from_all_children(self, &msg, STARTED);
     log_received_all_started(self);
 
-    //Bank Robbery
-    bank_robbery(self, num_children);
-
-    //Send stop
-    self->lamport_time++;
-    send_stop_to_all(self);
-
-    //receive done
-    receive_from_all_children(self, &msg);
+    receive_from_all_children(self, &msg, DONE);
     log_received_all_done(self);
 
-    AllHistory all_history;
-    receive_all_history(self, &all_history);
-    print_history(&all_history);
 }
 
 void receive_all_history(Process* self, AllHistory* all_history){
