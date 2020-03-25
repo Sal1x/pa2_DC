@@ -5,6 +5,7 @@
 #include "ipc.h"
 #include <sys/types.h>
 #include <unistd.h>
+#include "priority_queue.h"
 
 enum {
     MAX_PROCESSES = 10,
@@ -24,7 +25,9 @@ typedef struct {
     BalanceHistory history;
     local_id id;
     timestamp_t lamport_time;
+    PriorityQueue local_queue;
 } Process;
+
 
 // delete if not needed
 Process myself;
@@ -34,7 +37,10 @@ int receive_from_all_children(Process* self, Message* msg);
 int send_started_to_all(Process* self);
 int send_done_to_all(Process* self);
 int send_stop_to_all(Process* self);
+int send_request_to_all(Process* self);
 int send_history(Process* self);
+int send_cs_reply(Process* self, local_id to);
+int send_cs_release_to_all(Process* self);
 void fill_gaps(Process* self, timestamp_t current_time);
 void close_pipes_that_dont_belong_to_us(Process *self);
 void take_max_time_and_inc(Process *self, timestamp_t time);

@@ -106,6 +106,46 @@ int send_stop_to_all(Process* self) {
     return send_multicast(self, &msg);
 }
 
+int send_request_to_all(Process* self) {
+    Message msg = {
+        .s_header =
+            {
+                .s_magic = MESSAGE_MAGIC,
+                .s_type = CS_REQUEST,
+                .s_payload_len = 0,
+                .s_local_time = self->lamport_time,
+            },
+    };
+    return send_multicast(self, &msg);
+}
+
+int send_cs_reply(Process* self, local_id to) {
+    Message msg = {
+        .s_header =
+            {
+                .s_magic = MESSAGE_MAGIC,
+                .s_type = CS_REPLY,
+                .s_local_time = self->lamport_time,
+                .s_payload_len = 0,
+            },
+    };
+    send(&myself, to, &msg);
+
+}
+
+int send_cs_release_to_all(Process* self) {
+    Message msg = {
+        .s_header =
+            {
+                .s_magic = MESSAGE_MAGIC,
+                .s_type = CS_RELEASE,
+                .s_local_time = self->lamport_time,
+                .s_payload_len = 0,
+            },
+    };
+    send_multicast(&myself, to, &msg);
+}
+
 int send_history(Process* self) {
 
     size_t size_of_history = sizeof(local_id) +
@@ -139,7 +179,7 @@ int receive_any(void * self, Message * msg) {
                     bytes_read =read(reader[from][current_process->id], &msg->s_payload, msg->s_header.s_payload_len);
                 } while (bytes_read <= 0);
             }
-            return 0;
+            return from;
         }
     }
 }

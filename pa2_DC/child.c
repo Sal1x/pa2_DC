@@ -3,6 +3,7 @@
 #include "pa2345.h"
 #include "stdbool.h"
 #include "banking.h"
+#include "priority_queue.h"
 
 void run_child_routine(Process* self) {
     Message msg;
@@ -14,11 +15,74 @@ void run_child_routine(Process* self) {
     receive_from_all_children(self, &msg);
     log_received_all_started(self);
 
-    run_bank_routine(self);
+    int num_other_processes_running = request_cs(self);
+    //print
+    release_cs(self);
+
     log_received_all_done(self);
     self->lamport_time++;
     send_history(self);
 }
+
+int request_cs(const void * self) {
+    Process* process = (Process*) self;
+    Message msg;
+
+    process->lamport_time++;
+    pq_push(self, process->id, process->lamport_time);
+
+    process->lamport_time++;
+    send_request_to_all(process);
+
+    return wait_for_replies(process);
+}
+
+int release_cs(const void* self) {
+    Process* process = (Process*) self;
+
+    pq_pop(self);
+    process->lamport_time++;
+    send_cs_release_to_all(self);
+
+    return 0;
+}
+
+int wait_for_replies(Process* self) {
+       Message msg;
+    bool stop_requested = false;
+    int num_replies_left = num_children - 1;
+    int num_other_processes_running = num_children-1;
+    while(num_replies_left > 0 && pq_peek(self).process_id != self->id) {
+        self->lamport_time++;
+        local_id from = receive_any(self, &msg); // There is a cycle until message received
+        take_max_time_and_inc(self, msg.s_header.s_local_time);
+        // printf("Process %d received a message\n", self->id);
+        switch (msg.s_header.s_type)
+        {
+        case CS_REQUEST:
+            pq_push(self, from, msg.s_header.s_local_time);
+            self->lamport_time++;
+            send_cs_reply(self, from);
+            break;
+        case CS_REPLY:
+            num_replies_left--;
+            break;
+        case CS_RELEASE:
+            pq_pop(self);
+            num_replies_left--;
+            break;
+        case DONE:
+            // printf("Its a DONE!\n");
+            num_other_processes_running--;
+            break;
+        default:
+            break;
+        }
+    }
+    return num_other_processes_running; 
+}
+
+int release_cs(const void * self);
 
 int initialize_balance_history(Process* self) {
     self->history.s_id = self->id;
