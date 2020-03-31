@@ -35,7 +35,9 @@ typedef struct {
     BalanceHistory history;
     local_id id;
     timestamp_t lamport_time;
-    PriorityQueue local_queue;
+    int fork[MAX_PROCESSES+1];
+    int dirty[MAX_PROCESSES+1];
+    int waiting_for_fork[MAX_PROCESSES+1];
 } Process;
 
 
@@ -51,15 +53,14 @@ int send_stop_to_all(Process* self);
 int send_history(Process* self);
 void send_request_to_all(Process* self);
 void send_cs_reply(Process* self, local_id to);
+void send_cs_request(Process* self, local_id to);
 void send_cs_release_to_all(Process* self);
 void fill_gaps(Process* self, timestamp_t current_time);
 void close_pipes_that_dont_belong_to_us(Process *self);
 void take_max_time_and_inc(Process *self, timestamp_t time);
+int get_right_fork_index(Process* self);
+int get_left_fork_index(Process* self);
+int have_all_forks(Process* self);
 
-void pq_push(Process* self, local_id process_id, timestamp_t time);
-
-PriorityQueueElement pq_pop(Process* self);
-
-PriorityQueueElement pq_peek(Process* self);
 #endif
 

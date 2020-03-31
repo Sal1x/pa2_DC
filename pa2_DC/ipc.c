@@ -138,6 +138,20 @@ void send_cs_reply(Process* self, local_id to) {
 
 }
 
+void send_cs_request(Process* self, local_id to) {
+    Message msg = {
+        .s_header =
+            {
+                .s_magic = MESSAGE_MAGIC,
+                .s_type = CS_REQUEST,
+                .s_local_time = self->lamport_time,
+                .s_payload_len = 0,
+            },
+    };
+    send(&myself, to, &msg);
+
+}
+
 void send_cs_release_to_all(Process* self) {
     Message msg = {
         .s_header =
